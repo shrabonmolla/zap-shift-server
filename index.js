@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@cluster0.visb7wb.mongodb.net/?appName=Cluster0`;
 
 const port = 3000;
@@ -33,8 +33,13 @@ async function run() {
 
     // get all parcel
     app.get("/parcels", async (req, res) => {
-      const corsur = parcelCol.find();
-      const result = await corsur.toArray();
+      const query = {};
+      const { email } = req.query;
+      if (email) {
+        query.senderEmail = email;
+      }
+      const cursor = parcelCol.find(query);
+      const result = await cursor.toArray();
       res.send(result);
     });
 
@@ -42,6 +47,15 @@ async function run() {
     app.post("/parcels", async (req, res) => {
       const parcelData = req.body;
       const result = await parcelCol.insertOne(parcelData);
+      res.send(result);
+    });
+
+    // delte parcel
+    app.delete("/parcels/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await parcelCol.deleteOne(query);
       res.send(result);
     });
 
