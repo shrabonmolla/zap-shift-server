@@ -39,8 +39,28 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const db = client.db("parcelsDb");
+    const usersCol = db.collection("users");
     const parcelCol = db.collection("parcelCol");
     const paymentCollection = db.collection("paymentCollection");
+    const ridersCollection = db.collection("ridersCollection");
+
+    // users related api
+    // add users data to db
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      user.role = "user";
+      user.createdAt = new Date();
+
+      const email = user.email;
+      const userExist = await usersCol.findOne({ email });
+      if (userExist) {
+        return res.send({ message: "user already exist" });
+      }
+
+      const result = await usersCol.insertOne(user);
+      res.send("user data saved in db", result);
+    });
+
     // get parcel by id
     app.get("/payments/:id", async (req, res) => {
       const id = req.params.id;
@@ -76,6 +96,13 @@ async function run() {
       console.log(id);
       const query = { _id: new ObjectId(id) };
       const result = await parcelCol.deleteOne(query);
+      res.send(result);
+    });
+
+    // paymnet history geting
+    app.get("/payments", async (req, res) => {
+      const cursor = paymentCollection.find().sort({ paidAt: -1 });
+      const result = await cursor.toArray();
       res.send(result);
     });
 
@@ -117,7 +144,7 @@ async function run() {
 
       // stoping payment twice in database
       const transactionId = session.payment_intent;
-      const query = { transactionId : transactionId };
+      const query = { transactionId: transactionId };
       const paymentExist = await paymentCollection.findOne(query);
       // console.log(paymentExist);
 
@@ -164,6 +191,24 @@ async function run() {
           });
         }
       }
+    });
+
+    // riders related api
+    // GET --- getting all riders data
+    app.get("/riders", async (req, res) => {
+      const cursor = ridersCollection.find().sort({ createdAt: -1 });
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // POST --- creating a rider
+    app.post("/riders", async (req, res) => {
+      const rider = req.body;
+      rider.status = "pending";
+      rider.createdAt = new Date();
+
+      const result = await ridersCollection.insertOne(rider);
+      res.send(result);
     });
 
     await client.db("admin").command({ ping: 1 });
