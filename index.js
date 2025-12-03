@@ -116,6 +116,21 @@ async function run() {
       res.send(result);
     });
 
+    //get all driver-asssigned parcles with email
+    app.get("/parcels/rider", async (req, res) => {
+      const { riderEmail, deliveryStatus } = req.query;
+      const query = {};
+      if (riderEmail) {
+        query.riderEmail = riderEmail;
+      }
+      if (riderEmail) {
+        query.deliveryStatus = deliveryStatus;
+      }
+      const cursor = parcelCol.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // create parcel
     app.post("/parcels", async (req, res) => {
       const parcelData = req.body;
@@ -133,7 +148,7 @@ async function run() {
 
       const updatedDoc = {
         $set: {
-          deliveryStatus: "diver-asssigned",
+          deliveryStatus: "driver-asssigned",
           riderName: riderName,
           riderEmail: riderEmail,
           riderId: riderEmail,
