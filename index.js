@@ -45,6 +45,35 @@ async function run() {
     const ridersCollection = db.collection("ridersCollection");
 
     // users related api
+    // get all users
+    app.get("/users", async (req, res) => {
+      const cursor = usersCol.find().sort({ createdAt: -1 });
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+    // get all user role only api
+
+    app.get("/users/:email/role", async (req, res) => {
+      const userEmail = req.params.email;
+      const query = { email: userEmail };
+      const result = await usersCol.findOne(query);
+      res.send({ role: result?.role || "user" });
+    });
+
+    // update user role to admin
+    app.patch("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const roleInfo = req.body;
+      console.log(roleInfo);
+      const query = { _id: new ObjectId(id) };
+      const updateInfo = {
+        $set: {
+          role: roleInfo.role,
+        },
+      };
+      const result = await usersCol.updateOne(query, updateInfo);
+      res.send(result);
+    });
     // add users data to db
     app.post("/users", async (req, res) => {
       const user = req.body;
@@ -61,6 +90,8 @@ async function run() {
       res.send("user data saved in db", result);
     });
 
+    // all parcels related apis
+
     // get parcel by id
     app.get("/payments/:id", async (req, res) => {
       const id = req.params.id;
@@ -73,9 +104,12 @@ async function run() {
     // get all parcel
     app.get("/parcels", async (req, res) => {
       const query = {};
-      const { email } = req.query;
+      const { email, deliveryStatus } = req.query;
       if (email) {
         query.senderEmail = email;
+      }
+      if (deliveryStatus) {
+        query.deliveryStatus = deliveryStatus;
       }
       const cursor = parcelCol.find(query);
       const result = await cursor.toArray();
@@ -88,6 +122,41 @@ async function run() {
       parcelData.createdAt = new Date();
       const result = await parcelCol.insertOne(parcelData);
       res.send(result);
+    });
+
+    // Update parcel
+    app.patch("/parcels/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const { riderId, riderEmail, riderName } = req.body;
+
+      const updatedDoc = {
+        $set: {
+          deliveryStatus: "diver-asssigned",
+          riderName: riderName,
+          riderEmail: riderEmail,
+          riderId: riderEmail,
+        },
+      };
+
+      const parcelUpdatedResult = await parcelCol.updateOne(query, updatedDoc);
+
+      // rider info updatd
+
+      const riderQuery = { _id: new ObjectId(riderId) };
+      const updatedRiderDoc = {
+        $set: {
+          workStatus: " in-delivery",
+        },
+      };
+
+      const riderUpdatedResult = await ridersCollection.updateOne(
+        riderQuery,
+        updatedRiderDoc
+      );
+
+      res.send(riderUpdatedResult);
     });
 
     // delte parcel
@@ -164,6 +233,7 @@ async function run() {
           $set: {
             paymentStatus: "paid",
             trackingId: trackingId,
+            deliveryStatus: "pending-pickup",
           },
         };
         const result = await parcelCol.updateOne(query, update);
@@ -196,7 +266,21 @@ async function run() {
     // riders related api
     // GET --- getting all riders data
     app.get("/riders", async (req, res) => {
-      const cursor = ridersCollection.find().sort({ createdAt: -1 });
+      const { status, district, workStatus } = req.query;
+      const query = {};
+
+      if (status) {
+        query.status = status;
+      }
+
+      if (district) {
+        query.district = district;
+      }
+
+      if (workStatus) {
+        query.workStatus = workStatus;
+      }
+      const cursor = ridersCollection.find(query).sort({ createdAt: -1 });
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -220,6 +304,7 @@ async function run() {
       const updateStatus = {
         $set: {
           status: status,
+          workStatus: "available",
         },
       };
       const result = await ridersCollection.updateOne(query, updateStatus);
