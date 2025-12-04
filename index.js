@@ -123,8 +123,8 @@ async function run() {
       if (riderEmail) {
         query.riderEmail = riderEmail;
       }
-      if (riderEmail) {
-        query.deliveryStatus = deliveryStatus;
+      if (deliveryStatus) {
+        query.deliveryStatus = { $nin: ["parcel-delivered"] };
       }
       const cursor = parcelCol.find(query);
       const result = await cursor.toArray();
@@ -172,6 +172,19 @@ async function run() {
       );
 
       res.send(riderUpdatedResult);
+    });
+
+    // Update Parcel status
+    app.patch("/parcels/:id/status", async (req, res) => {
+      const { deliveryStatus, riderId, trackingId } = req.body;
+      const query = { _id: new ObjectId(req.params.id) };
+      const updateDoc = {
+        $set: {
+          deliveryStatus: deliveryStatus,
+        },
+      };
+      const result = await parcelCol.updateOne(query, updateDoc);
+      res.send(result);
     });
 
     // delte parcel
